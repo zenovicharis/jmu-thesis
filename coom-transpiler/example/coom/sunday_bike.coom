@@ -1,0 +1,253 @@
+grammar Coom;
+
+/*
+ * COOM grammar (pragmatic, expression-text via lexer mode).
+ *
+ * Key idea:
+ * - NO EXPR_TEXT token exists in the default mode.
+ * - After DEFAULT/REQUIRE/IMPLY/CONDITION, the lexer switches to EXPR mode,
+ *   where it emits exactly one EXPR_TEXT token (until NEWLINE/SEMI/RBRACE),
+ *   then returns to DEFAULT mode.
+ *
+ * This prevents EXPR_TEXT from swallowing "product {" at file start.
+ */
+
+coomFile
+  : sep* statement (sep+ statement)* sep* EOF
+  ;
+
+statement
+  : productDecl
+  | structureDecl
+  | enumerationDecl
+  | behaviorDecl
+  ;
+
+sep
+  : NEWLINE
+  ;
+
+// -------------------- product --------------------
+
+productDecl
+  : PRODUCT LBRACE sep* productLine* RBRACE
+  ;
+
+productLine
+  : (numDecl | multiplicityDecl | typedAttrDecl) stmtEnd
+  ;
+
+// -------------------- structure --------------------
+
+structureDecl
+  : STRUCTURE IDENT LBRACE sep* structureLine* RBRACE
+  ;
+
+structureLine
+  : (numDecl | multiplicityDecl | typedAttrDecl) stmtEnd
+  ;
+
+// -------------------- enumeration --------------------
+
+enumerationDecl
+  : ENUMERATION IDENT LBRACE sep* enumerationLine* RBRACE
+  ;
+
+enumerationLine
+  : (enumAttributeDecl | enumValueWithAttrsDecl | enumBareValueDecl) stmtEnd
+  ;
+
+enumAttributeDecl
+  : ATTRIBUTE NUM unitSpec? IDENT
+  ;
+
+enumValueWithAttrsDecl
+  : IDENT ASSIGN LPAREN valueList? RPAREN
+  ;
+
+enumBareValueDecl
+  : IDENT
+  ;
+
+// -------------------- behavior --------------------
+
+behaviorDecl
+  : BEHAVIOR IDENT LBRACE sep* behaviorStmt* RBRACE
+  ;
+
+behaviorStmt
+  : explanationStmt stmtEnd
+  | defaultStmt stmtEnd
+  | requireStmt stmtEnd
+  | implyStmt stmtEnd
+  | conditionStmt stmtEnd
+  | combinationsBlock
+  | sep
+  ;
+
+explanationStmt
+  : EXPLANATION STRING
+  ;
+
+defaultStmt
+  : DEFAULT IDENT ASSIGN expr
+  ;
+
+requireStmt
+  : REQUIRE expr
+  ;
+
+implyStmt
+  : IMPLY expr
+  ;
+
+conditionStmt
+  : CONDITION expr
+  ;
+
+combinationsBlock
+  : COMBINATIONS LPAREN identList? RPAREN LBRACE sep* allowStmt* RBRACE
+  ;
+
+allowStmt
+  : ALLOW LPAREN valueList? RPAREN stmtEnd
+  ;
+
+// -------------------- shared decls --------------------
+
+typedAttrDecl
+  : IDENT IDENT
+  ;
+
+numDecl
+  : NUM numRange IDENT
+  | NUM unitSpec? IDENT
+  ;
+
+numRange
+  : INT DASH INT
+  ;
+
+unitSpec
+  : SLASH IDENT
+  ;
+
+multiplicityDecl
+  : INT DOTDOT (INT | STAR) IDENT IDENT
+  ;
+
+identList
+  : IDENT (COMMA IDENT)*
+  ;
+
+valueList
+  : value (COMMA value)*
+  ;
+
+value
+  : IDENT
+  | INT
+  | STRING
+  ;
+
+// Expression is captured as a single token produced in EXPR lexer mode
+expr
+  : EXPR_TEXT
+  ;
+
+stmtEnd
+  : SEMI? NEWLINE+
+  | SEMI
+  | NEWLINE+
+  ;
+
+// -------------------- Lexer (DEFAULT_MODE) --------------------
+
+PRODUCT       : 'product';
+STRUCTURE     : 'structure';
+ENUMERATION   : 'enumeration';
+BEHAVIOR      : 'behavior';
+
+ATTRIBUTE     : 'attribute';
+NUM           : 'num';
+
+EXPLANATION   : 'explanation';
+
+// These switch the lexer into EXPR mode to capture the remainder as EXPR_TEXT
+DEFAULT       : 'default'   -> pushMode(EXPR);
+REQUIRE       : 'require'   -> pushMode(EXPR);
+IMPLY         : 'imply'     -> pushMode(EXPR);
+CONDITION     : 'condition' -> pushMode(EXPR);
+
+COMBINATIONS  : 'combinations';
+ALLOW         : 'allow';
+
+LBRACE        : '{';
+RBRACE        : '}';
+LPAREN        : '(';
+RPAREN        : ')';
+ASSIGN        : '=';
+COMMA         : ',';
+SLASH         : '/';
+SEMI          : ';';
+
+DASH          : '-';
+DOTDOT        : '..';
+STAR          : '*';
+
+IDENT         : [A-Za-z_][A-Za-z_0-9]*;
+INT           : [0-9]+;
+
+STRING
+  : '"' ( '\\"' | ~["\\] )* '"'
+  ;
+
+LINE_COMMENT  : '//' ~[\r\n]* -> skip;
+
+// NEWLINE is a real token used by the parser
+NEWLINE       : ('\r'? '\n')+ ;
+
+// Skip spaces/tabs only (NOT newlines)
+WS            : [ \t]+ -> skip;
+
+
+// -------------------- Lexer mode: EXPR --------------------
+mode EXPR;
+
+/*
+ * In EXPR mode we capture the rest of the line (or until ';' or '}' if someone writes it inline).
+ * IMPORTANT: We do NOT skip NEWLINE in EXPR mode; it ends the expression.
+ *
+ * We also allow normal spaces/tabs inside the expression.
+ */
+
+// Capture expression text (trim in Java if needed)
+EXPR_TEXT
+  : ~[;\r\n}]+
+  ;
+
+// End-of-expression terminators: return to DEFAULT_MODE
+EXPR_SEMI
+  : ';' -> type(SEMI), popMode
+  ;
+
+EXPR_NEWLINE
+  : ('\r'? '\n')+ -> type(NEWLINE), popMode
+  ;
+
+// If a '}' appears unexpectedly while in EXPR mode, emit it and return to DEFAULT_MODE.
+// This avoids the lexer getting stuck in EXPR mode.
+EXPR_RBRACE
+  : '}' -> type(RBRACE), popMode
+  ;
+
+// Allow whitespace inside expression (keep it as part of EXPR_TEXT by not skipping here)
+// But if you want to ignore leading spaces after keyword, you can skip them:
+EXPR_WS
+  : [ \t]+ -> skip
+  ;
+
+// Comments inside expression lines (rare); treat them as end-of-expression (like newline)
+EXPR_LINE_COMMENT
+  : '//' ~[\r\n]* -> skip
+  ;

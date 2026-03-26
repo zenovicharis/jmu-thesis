@@ -1,0 +1,150 @@
+PREFIX coom: <http://www.denkbares.com/coomV2#>
+PREFIX dex:  <http://denkbares.com/ex#>
+PREFIX rdf:  <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
+PREFIX skos: <http://www.w3.org/2004/02/skos/core#>
+PREFIX xsd:  <http://www.w3.org/2001/XMLSchema#>
+
+dex:ColorT_Red  rdf:type  coom:Option;
+        coom:label    "Red";
+        coom:type     coom:Option;
+        skos:broader  dex:ColorT .
+
+dex:WheelT_tire  rdf:type  coom:Feature;
+        coom:label  "tire";
+        coom:type   dex:TireT .
+
+dex:WheelT_price  rdf:type     coom:Feature;
+        coom:fractionalDigits  "2"^^xsd:int;
+        coom:label             "price";
+        coom:range             [ coom:max  "2000.0"^^xsd:double;
+                                 coom:min  "0.0"^^xsd:double
+                               ];
+        coom:type              coom:Numerical;
+        coom:unit              "Euro" .
+
+dex:root_behavior_2ee236a8-1902-487c-8782-8659325d0970
+        rdf:type          coom:DefaultValue;
+        coom:description  "DefaultValue{origin=:root, path=root.bike.color, value=Green}";
+        coom:features     ( dex:root_bike dex:BikeT_color );
+        coom:origin       dex:Struct_root;
+        coom:value        dex:ColorT_Green .
+
+dex:WheelT_name  rdf:type  coom:Feature;
+        coom:label  "name";
+        coom:type   coom:Textual .
+
+dex:ColorT_Green  rdf:type  coom:Option;
+        coom:label    "Green";
+        coom:type     coom:Option;
+        skos:broader  dex:ColorT .
+
+dex:TireT_Ti1  rdf:type  coom:Option;
+        coom:label    "Ti1";
+        coom:type     coom:Option;
+        skos:broader  dex:TireT .
+
+dex:Struct_BikeT  rdf:type  coom:Structure;
+        coom:features  ( dex:BikeT_color dex:BikeT_wheel );
+        coom:label     "BikeT" .
+
+dex:BikeT_behavior_425d6756-7aa5-4026-b9e1-10b9270aed3e
+        rdf:type          coom:Constraint;
+        coom:condition    [ coom:or  [ coom:leftOperand   ( dex:BikeT_wheel dex:WheelT_tire );
+                                       coom:operator      coom:equal;
+                                       coom:rightOperand  dex:TireT_Ti2
+                                     ];
+                            coom:or  [ coom:leftOperand   ( dex:BikeT_wheel dex:WheelT_tire );
+                                       coom:operator      coom:equal;
+                                       coom:rightOperand  dex:TireT_Ti1
+                                     ]
+                          ];
+        coom:description  "Constraint{origin=BikeT, condition=color = Yellow, penalty=0, explanation=null}";
+        coom:origin       dex:Struct_BikeT .
+
+dex:ColorT  rdf:type  coom:Enumeration;
+        coom:label    "ColorT";
+        coom:options  ( dex:ColorT_Red dex:ColorT_Green dex:ColorT_Yellow dex:ColorT_Blue ) .
+
+dex:TireT_Ti3  rdf:type  coom:Option;
+        coom:label    "Ti3";
+        coom:type     coom:Option;
+        skos:broader  dex:TireT .
+
+dex:root_bike  rdf:type  coom:Feature;
+        coom:label  "bike";
+        coom:type   coom:Structure .
+
+dex:ColorT_Blue  rdf:type  coom:Option;
+        coom:label    "Blue";
+        coom:type     coom:Option;
+        skos:broader  dex:ColorT .
+
+dex:BikeT_color  rdf:type  coom:Feature;
+        coom:label  "color";
+        coom:type   dex:ColorT .
+
+dex:Struct_root  rdf:type  coom:Structure , coom:Product;
+        coom:features  ( dex:root_bike ) .
+
+dex:TireT  rdf:type   coom:Enumeration;
+        coom:label    "TireT";
+        coom:options  ( dex:TireT_Ti1 dex:TireT_Ti2 dex:TireT_Ti3 ) .
+
+dex:root_behavior_d6395925-1992-4dc2-aded-9280b4823af1
+        rdf:type          coom:Assignment;
+        coom:condition    [ coom:leftOperand   ( dex:root_bike dex:BikeT_wheel dex:WheelT_tire );
+                            coom:operator      coom:equal;
+                            coom:rightOperand  dex:TireT_Ti3
+                          ];
+        coom:description  "Implication{origin=:root, valuePath=root.bike.color, formula=Blue}";
+        coom:features     ( dex:root_bike dex:BikeT_color );
+        coom:origin       dex:Struct_root;
+        coom:value        dex:ColorT_Blue .
+
+dex:BikeT_behavior_ac371415-566d-4380-9d7d-062d62b93fb4
+        rdf:type          coom:Combinations;
+        coom:allow        [ coom:condition  true;
+                            coom:condition  [ coom:leftOperand   ( dex:BikeT_wheel dex:WheelT_tire );
+                                              coom:operator      coom:equal;
+                                              coom:rightOperand  dex:TireT_Ti3
+                                            ]
+                          ];
+        coom:allow        [ coom:condition  [ coom:or  [ coom:leftOperand   ( dex:BikeT_wheel dex:WheelT_tire );
+                                                         coom:operator      coom:equal;
+                                                         coom:rightOperand  dex:TireT_Ti2
+                                                       ];
+                                              coom:or  [ coom:leftOperand   ( dex:BikeT_wheel dex:WheelT_tire );
+                                                         coom:operator      coom:equal;
+                                                         coom:rightOperand  dex:TireT_Ti1
+                                                       ]
+                                            ];
+                            coom:condition  [ coom:leftOperand   ( dex:BikeT_color );
+                                              coom:operator      coom:equal;
+                                              coom:rightOperand  dex:ColorT_Red
+                                            ]
+                          ];
+        coom:description  "Combinations{origin=Structure BikeT { color, wheel }, allowed=[Combination{conditions=[color = Red, (wheel.tire = Ti1) || (wheel.tire = Ti2)]}, Combination{conditions=[true, wheel.tire = Ti3]}], forbidden=[]}";
+        coom:origin       dex:Struct_BikeT .
+
+dex:ColorT_Yellow  rdf:type  coom:Option;
+        coom:label    "Yellow";
+        coom:type     coom:Option;
+        skos:broader  dex:ColorT .
+
+dex:BikeT_wheel  rdf:type  coom:Feature;
+        coom:label  "wheel";
+        coom:type   coom:Structure .
+
+dex:WheelT_highlighted
+        rdf:type    coom:Feature;
+        coom:label  "highlighted";
+        coom:type   coom:Boolean .
+
+dex:Struct_WheelT  rdf:type  coom:Structure;
+        coom:features  ( dex:WheelT_price dex:WheelT_highlighted dex:WheelT_name dex:WheelT_tire );
+        coom:label     "WheelT" .
+
+dex:TireT_Ti2  rdf:type  coom:Option;
+        coom:label    "Ti2";
+        coom:type     coom:Option;
+        skos:broader  dex:TireT .

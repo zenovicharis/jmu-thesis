@@ -1,0 +1,16 @@
+@prefix sh:   <http://www.w3.org/ns/shacl#> .
+@prefix ex:   <http://example.org/coom#> .
+
+#################################################
+# Profile-specific constraint (example)
+#################################################
+
+ex:SingleControllerProfileShape
+  a sh:NodeShape ;
+  sh:targetClass ex:Product ;
+
+  sh:property [
+    sh:path ex:hasController ;
+    sh:maxCount 1 ;
+    sh:message "This profile allows at most one controller." ;
+  ] .

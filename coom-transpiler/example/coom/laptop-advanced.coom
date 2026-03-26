@@ -1,0 +1,106 @@
+product {
+    CPU     cpu
+    RAM     ram
+    GPU     gpu
+    Screen  screen
+    1..2    SSD        ssds
+
+    // Flattened numeric attributes
+    num /gb  0-64    ramSize
+    num /kg  0-2     ramWeight
+    num /kg  0-2     gpuWeight
+    num /kg  0-2     screenWeight
+    num /kg  0-2     ssdWeight
+    num /kg  0-5     totalWeight
+
+    num       0-3000 screenResolution
+
+    num /€    0-3000 cpuPrice
+    num /€    0-3000 gpuPrice
+    num /€    0-3000 screenPrice
+    num /€    0-3000 ssdPrice
+    num /€    0-3000 totalPrice
+}
+
+enumeration CPU {
+    attribute num price
+
+    i5      = (200)
+    i7      = (300)
+    ryzen5  = (220)
+    ryzen7  = (330)
+}
+
+enumeration RAM {
+    attribute num ram
+    attribute num weight
+
+    GB8   = (8  0.2)
+    GB16  = (16 0.3)
+    GB32  = (32 0.4)
+}
+
+enumeration GPU {
+    attribute num weight
+    attribute num price
+
+    none     = (0.0, 0)
+    GTX1650  = (0.5, 200)
+    RTX3060  = (0.7, 400)
+}
+
+enumeration Screen {
+    attribute num resolution
+    attribute num weight
+    attribute num price
+
+    HD     = (1080, 0.6, 150)
+    QHD    = (1440, 0.8, 250)
+    UHD    = (2160, 1.0, 400)
+}
+
+enumeration SSD {
+    attribute num size
+    attribute num weight
+    attribute num price
+
+    GB256 = (256, 0.2, 80)
+    GB512 = (512, 0.25, 120)
+    TB1   = (1000, 0.3, 180)
+}
+
+behavior {
+    explanation "Map RAM to size and weight"
+    require ramSize = ram.ram
+    require ramWeight = ram.weight
+
+    explanation "GPU weight and price"
+    require gpuWeight = gpu.weight
+    require gpuPrice = gpu.price
+
+    explanation "Screen weight, price and resolution"
+    require screenWeight = screen.weight
+    require screenPrice = screen.price
+    require screenResolution = screen.resolution
+
+    explanation "SSD total weight and price"
+    require ssdWeight = sum(ssds.weight)
+    require ssdPrice  = sum(ssds.price)
+
+    explanation "CPU price from enum"
+    require cpuPrice = cpu.price
+
+    explanation "Total weight is the sum of all components"
+    require totalWeight = ramWeight + gpuWeight + screenWeight + ssdWeight
+
+    explanation "Total price includes all parts"
+    require totalPrice = cpuPrice + gpuPrice + screenPrice + ssdPrice
+
+    explanation "If screen is UHD, RAM must be ≥16 GB"
+    condition screenResolution = 2160
+    require ramSize >= 16
+
+    explanation "If GPU is selected, RAM must be ≥16 GB"
+    condition gpu != none
+    require ramSize >= 16
+}

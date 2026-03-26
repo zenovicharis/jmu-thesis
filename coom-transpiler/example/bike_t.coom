@@ -1,0 +1,49 @@
+product {
+	BikeT bike
+}
+
+structure BikeT {
+	ColorT color
+	WheelT wheel
+}
+
+structure WheelT {
+	num.##/Euro 0-2000 price
+	bool   highlighted
+	string name
+	TireT  tire
+}
+
+enumeration TireT {
+	Ti1
+	Ti2
+	Ti3
+}
+
+enumeration ColorT {
+	Red
+	Green
+	Yellow
+	Blue
+}
+
+behavior BikeT {
+	condition wheel.tire = Ti1 || wheel.tire = Ti2
+	require color = Yellow
+}
+
+behavior {
+	condition bike.wheel.tire = Ti3
+	imply bike.color = Blue
+}
+
+behavior {
+	default bike.color = Green
+}
+
+
+behavior BikeT {
+    combinations  (color      wheel.tire)
+    allow         (Red        (Ti1, Ti2))
+    allow         (-*-        Ti3)
+}

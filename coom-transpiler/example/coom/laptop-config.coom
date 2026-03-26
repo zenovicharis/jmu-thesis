@@ -1,0 +1,61 @@
+product {
+    CPU cpu
+    RAM ram
+    GPU gpu
+
+    num /gb 0-64 ramSize
+    num /kg 0-2 ramWeight
+    num /kg 0-2 gpuWeight
+    num /kg 0-5 totalWeight
+}
+
+enumeration CPU {
+    i5
+    i7
+    ryzen5
+    ryzen7
+}
+
+enumeration RAM {
+    GB8
+    GB16
+    GB32
+}
+
+enumeration GPU {
+    none
+    GTX1650
+    RTX3060
+}
+
+behavior {
+    explanation "Manually map RAM to size and weight"
+    condition ram = GB8
+    require ramSize = 8
+    require ramWeight = 0.2
+
+    condition ram = GB16
+    require ramSize = 16
+    require ramWeight = 0.3
+
+    condition ram = GB32
+    require ramSize = 32
+    require ramWeight = 0.4
+
+    explanation "Manually map GPU to weight"
+    condition gpu = none
+    require gpuWeight = 0.0
+
+    condition gpu = GTX1650
+    require gpuWeight = 0.5
+
+    condition gpu = RTX3060
+    require gpuWeight = 0.7
+
+    explanation "Total weight is sum of RAM and GPU weights"
+    require totalWeight = ramWeight + gpuWeight
+
+    explanation "If GPU is selected, RAM must be ≥16 GB"
+    condition gpu != none
+    require ramSize >= 16
+}

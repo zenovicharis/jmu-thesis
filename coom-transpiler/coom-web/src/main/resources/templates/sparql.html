@@ -1,0 +1,389 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SPARQL Playground</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            border: "hsl(214.3 31.8% 91.4%)",
+            input: "hsl(214.3 31.8% 91.4%)",
+            ring: "hsl(222.2 84% 4.9%)",
+            background: "hsl(0 0% 100%)",
+            foreground: "hsl(222.2 84% 4.9%)",
+            primary: {
+              DEFAULT: "hsl(222.2 47.4% 11.2%)",
+              foreground: "hsl(210 40% 98%)",
+            },
+            secondary: {
+              DEFAULT: "hsl(210 40% 96%)",
+              foreground: "hsl(222.2 84% 4.9%)",
+            },
+            muted: {
+              DEFAULT: "hsl(210 40% 96%)",
+              foreground: "hsl(215.4 16.3% 46.9%)",
+            },
+          },
+        },
+      },
+    };
+  </script>
+</head>
+<body class="bg-background min-h-screen">
+  <div class="container max-w-6xl mx-auto py-10 px-4 space-y-6">
+    <div class="flex items-center justify-between">
+      <div>
+        <h1 class="text-3xl font-bold text-foreground">SPARQL Playground</h1>
+        <p class="text-sm text-muted-foreground">Query any compiled RDF you saved in the browser.</p>
+      </div>
+      <div class="flex space-x-2">
+        <a href="/view-coom" class="inline-flex items-center justify-center rounded-md text-sm font-medium bg-secondary text-secondary-foreground hover:bg-secondary/80 h-10 px-4 py-2 border border-border">Back to Transpiler</a>
+      </div>
+    </div>
+
+    <div class="bg-background border border-border rounded-lg shadow-sm p-6 space-y-4">
+      <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
+        <div class="space-y-2">
+          <label class="text-sm font-medium text-foreground">Saved dataset</label>
+          <select id="savedSelect" class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2">
+            <option value="">Choose saved RDF...</option>
+          </select>
+          <p class="text-xs text-muted-foreground">Saved items come from "Save to Browser" on the transpiler page.</p>
+        </div>
+        <div class="space-y-2">
+          <label class="text-sm font-medium text-foreground">Format</label>
+          <select id="formatSelect" class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2">
+            <option value="turtle">Turtle</option>
+            <option value="rdfxml">RDF/XML</option>
+            <option value="ntriples">N-Triples</option>
+            <option value="jsonld">JSON-LD</option>
+          </select>
+          <p class="text-xs text-muted-foreground">Set this to how the RDF text below is encoded.</p>
+        </div>
+        <div class="space-y-2">
+          <label class="text-sm font-medium text-foreground">Actions</label>
+          <div class="flex space-x-2">
+            <button id="loadSavedBtn" class="flex-1 inline-flex items-center justify-center rounded-md text-sm font-medium bg-secondary text-secondary-foreground hover:bg-secondary/80 h-10 px-4 py-2 border border-border">Load saved</button>
+            <button id="clearRdfBtn" class="flex-1 inline-flex items-center justify-center rounded-md text-sm font-medium bg-muted text-foreground hover:bg-muted/80 h-10 px-4 py-2 border border-border">Clear</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <div class="space-y-2">
+          <div class="flex items-center justify-between">
+            <label class="text-sm font-medium text-foreground">RDF Data</label>
+            <span id="rdfMeta" class="text-xs text-muted-foreground"></span>
+          </div>
+          <textarea id="rdfInput" class="w-full min-h-[260px] rounded-md border border-input bg-background px-3 py-2 text-sm font-mono ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2" placeholder="Paste RDF here or load from saved models"></textarea>
+        </div>
+        <div class="space-y-2">
+          <div class="flex items-center justify-between">
+            <label class="text-sm font-medium text-foreground">SPARQL Query</label>
+            <button id="loadSampleQuery" class="text-xs text-muted-foreground hover:text-foreground">Sample query</button>
+          </div>
+          <textarea id="sparqlInput" class="w-full min-h-[260px] rounded-md border border-input bg-background px-3 py-2 text-sm font-mono ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2" placeholder="SELECT ?s ?p ?o WHERE { ?s ?p ?o } LIMIT 10"></textarea>
+        </div>
+      </div>
+
+      <div class="flex items-center space-x-3">
+        <button id="runBtn" class="inline-flex items-center justify-center rounded-md text-sm font-medium bg-primary text-primary-foreground hover:bg-primary/90 h-10 px-4 py-2 border border-border">Run SPARQL</button>
+        <span id="status" class="text-sm text-muted-foreground"></span>
+      </div>
+    </div>
+
+    <div class="bg-background border border-border rounded-lg shadow-sm p-6">
+      <div class="flex items-center justify-between mb-3">
+        <h3 class="text-lg font-semibold text-foreground">Results</h3>
+        <span id="resultMeta" class="text-xs text-muted-foreground"></span>
+      </div>
+      <div id="results" class="text-sm text-foreground overflow-x-auto"></div>
+    </div>
+
+    <div class="bg-background border border-border rounded-lg shadow-sm p-6">
+      <div class="flex items-center justify-between mb-3">
+        <div>
+          <h3 class="text-lg font-semibold text-foreground">Query History (Local)</h3>
+          <p class="text-sm text-muted-foreground">Stored in your browser; includes RDF snapshot, query, and result summary.</p>
+        </div>
+        <button id="clearHistory" class="text-sm text-muted-foreground hover:text-foreground">Clear history</button>
+      </div>
+      <div id="historyList" class="space-y-2 text-sm text-foreground"></div>
+      <div id="historyEmpty" class="text-sm text-muted-foreground">No queries saved yet. Run a query to add it.</div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/n3@1.17.0/browser/n3.min.js"></script>
+  <!-- Use the official UMD browser build; the npm package entry is CommonJS and breaks with `exports is not defined` in browsers. -->
+  <script src="https://rdf.js.org/comunica-browser/versions/v4/engines/query-sparql-rdfjs/comunica-browser.js"></script>
+  <script>
+    (function() {
+      const STORAGE_KEY = 'coomSavedModels';
+      const HISTORY_KEY = 'sparqlQueryHistory';
+      const savedSelect = document.getElementById('savedSelect');
+      const loadSavedBtn = document.getElementById('loadSavedBtn');
+      const clearRdfBtn = document.getElementById('clearRdfBtn');
+      const rdfInput = document.getElementById('rdfInput');
+      const sparqlInput = document.getElementById('sparqlInput');
+      const runBtn = document.getElementById('runBtn');
+      const status = document.getElementById('status');
+      const results = document.getElementById('results');
+      const rdfMeta = document.getElementById('rdfMeta');
+      const resultMeta = document.getElementById('resultMeta');
+      const formatSelect = document.getElementById('formatSelect');
+      const sampleBtn = document.getElementById('loadSampleQuery');
+      const historyList = document.getElementById('historyList');
+      const historyEmpty = document.getElementById('historyEmpty');
+      const clearHistoryBtn = document.getElementById('clearHistory');
+
+      // Helper to turn a Comunica stream into an array in both browser and node polyfills.
+      async function streamToArray(stream) {
+        if (stream.toArray) return stream.toArray();
+        return await new Promise((resolve, reject) => {
+          const items = [];
+          stream.on('data', item => items.push(item));
+          stream.on('end', () => resolve(items));
+          stream.on('error', reject);
+        });
+      }
+
+      function loadSavedList() {
+        try { return JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]'); }
+        catch (_) { return []; }
+      }
+
+      function loadHistory() {
+        try { return JSON.parse(localStorage.getItem(HISTORY_KEY) || '[]'); }
+        catch (_) { return []; }
+      }
+
+      function persistHistory(list) {
+        localStorage.setItem(HISTORY_KEY, JSON.stringify(list));
+      }
+
+      function renderHistory() {
+        const items = loadHistory().sort((a,b)=>b.ts-a.ts);
+        if (!historyList || !historyEmpty) return;
+        if (items.length === 0) {
+          historyEmpty.classList.remove('hidden');
+          historyList.innerHTML = '';
+          return;
+        }
+        historyEmpty.classList.add('hidden');
+        historyList.innerHTML = '';
+        items.forEach((item, idx) => {
+          const row = document.createElement('div');
+          row.className = 'flex items-center justify-between border border-border rounded-md px-3 py-2';
+          row.innerHTML =
+            '<div class="space-y-0.5">' +
+              '<div class="font-semibold truncate max-w-[28rem]">' + (item.queryLine || 'Query') + '</div>' +
+              '<div class="text-xs text-muted-foreground">' + new Date(item.ts).toLocaleString() + ' • ' + (item.format || 'turtle') + ' • ' + (item.summary || '') + '</div>' +
+            '</div>' +
+            '<div class="flex items-center space-x-2">' +
+              '<button class="text-sm px-3 py-1 rounded-md border border-border hover:bg-muted" data-action="load" data-idx="' + idx + '">Load</button>' +
+              '<button class="text-sm px-3 py-1 rounded-md border border-border hover:bg-muted" data-action="download" data-idx="' + idx + '">Download</button>' +
+              '<button class="text-sm px-3 py-1 rounded-md border border-border text-red-600 hover:bg-red-50" data-action="delete" data-idx="' + idx + '">Delete</button>' +
+            '</div>';
+          historyList.appendChild(row);
+        });
+      }
+
+      function saveHistoryEntry(entry) {
+        const list = loadHistory();
+        list.push(entry);
+        persistHistory(list);
+        renderHistory();
+      }
+
+      function handleHistoryClick(e) {
+        const btn = e.target.closest('button[data-action]');
+        if (!btn) return;
+        const idx = parseInt(btn.getAttribute('data-idx'), 10);
+        const action = btn.getAttribute('data-action');
+        const items = loadHistory().sort((a,b)=>b.ts-a.ts);
+        const item = items[idx];
+        if (!item) return;
+        if (action === 'delete') {
+          const filtered = items.filter((x) => x !== item);
+          persistHistory(filtered);
+          renderHistory();
+        } else if (action === 'download') {
+          const blob = new Blob([item.rdf || '', '\n\n# Query\n', item.query || '', '\n\n# Result\n', item.result || ''], { type: 'text/plain' });
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = 'sparql-run.txt';
+          a.click();
+          setTimeout(() => URL.revokeObjectURL(url), 500);
+        } else if (action === 'load') {
+          rdfInput.value = item.rdf || '';
+          sparqlInput.value = item.query || '';
+          if (formatSelect && item.format) formatSelect.value = item.format;
+        }
+      }
+
+      function populateSaved() {
+        const items = loadSavedList().sort((a,b)=>b.ts-a.ts);
+        savedSelect.innerHTML = '<option value=\"\">Choose saved RDF...</option>';
+        items.forEach((item, idx) => {
+          const opt = document.createElement('option');
+          opt.value = idx;
+          opt.textContent = (item.name || 'model') + ' (' + (item.format || 'turtle') + ')';
+          savedSelect.appendChild(opt);
+        });
+        rdfMeta.textContent = items.length ? (items.length + ' saved datasets') : 'no saved datasets';
+      }
+
+      function loadSelected() {
+        const items = loadSavedList().sort((a,b)=>b.ts-a.ts);
+        const idx = parseInt(savedSelect.value, 10);
+        const item = items[idx];
+        if (!item) return;
+        rdfInput.value = item.rdf || '';
+        formatSelect.value = item.format || 'turtle';
+        rdfMeta.textContent = 'Loaded ' + (item.name || 'model') + ' (' + (item.format || 'turtle') + ')';
+      }
+
+      async function runQuery() {
+        results.innerHTML = '';
+        resultMeta.textContent = '';
+        status.textContent = 'Running...';
+        const query = sparqlInput.value.trim();
+        const data = rdfInput.value.trim();
+        if (!query || !data) { status.textContent = 'Provide RDF and a SPARQL query.'; return; }
+
+        // Auto-prepend a default ex: prefix if the user forgot it (common for the saved COOM examples)
+        let effectiveQuery = query;
+        const defaultEx = 'PREFIX ex: <http://example.com/coom/>\n';
+        if (!/^[\\s]*prefix\\s+ex:/im.test(query)) {
+          effectiveQuery = defaultEx + query;
+        }
+
+        const mediaType = ({
+          rdfxml: 'application/rdf+xml',
+          ntriples: 'application/n-triples',
+          jsonld: 'application/ld+json',
+          turtle: 'text/turtle'
+        })[formatSelect.value] || 'text/turtle';
+
+        try {
+          if (!window.Comunica || !window.N3 || !window.N3.Parser || !window.Comunica.QueryEngine) {
+            status.textContent = 'Comunica/N3 not available (check network or CDN).';
+            results.innerHTML = '<div class="text-sm text-red-600">Required JS libs not loaded; cannot run queries.</div>';
+            return;
+          }
+
+          // Parse RDF text into an RDFJS store (supports Turtle/N-Triples)
+          let n3Format = 'text/turtle';
+          if (mediaType === 'application/n-triples') n3Format = 'N-Triples';
+          if (mediaType === 'application/rdf+xml' || mediaType === 'application/ld+json') {
+            status.textContent = 'Only Turtle and N-Triples are supported in the browser runner.';
+            results.innerHTML = '<div class="text-sm text-red-600">Use Turtle or N-Triples input.</div>';
+            return;
+          }
+          const parser = new window.N3.Parser({ format: n3Format });
+          const store = new window.N3.Store();
+          parser.parse(data, (error, quad) => {
+            if (error) throw error;
+            if (quad) store.addQuad(quad);
+          });
+
+          const engine = new window.Comunica.QueryEngine();
+          const source = store; // RDFJS store is understood by the browser build
+          const start = performance.now();
+
+          const isAsk = /^[\\s]*ASK\\b/i.test(effectiveQuery);
+          if (isAsk) {
+            const ok = await engine.queryBoolean(effectiveQuery, { sources: [source] });
+            results.innerHTML = '<div class="text-lg font-semibold">ASK result: ' + ok + '</div>';
+            resultMeta.textContent = 'boolean • ' + formatSelect.value;
+            saveHistoryEntry({
+              ts: Date.now(),
+              query,
+              queryLine: query.split('\\n').find(l=>l.trim()) || 'ASK query',
+              rdf: data,
+              format: formatSelect.value,
+              summary: 'ASK: ' + ok,
+              result: 'ASK result: ' + ok
+            });
+          } else {
+            const bindingsStream = await engine.queryBindings(effectiveQuery, { sources: [source] });
+            const bindings = await streamToArray(bindingsStream);
+            renderTable(bindings);
+            resultMeta.textContent = bindings.length + ' row(s) • ' + formatSelect.value;
+            saveHistoryEntry({
+              ts: Date.now(),
+              query,
+              queryLine: query.split('\\n').find(l=>l.trim()) || 'SELECT query',
+              rdf: data,
+              format: formatSelect.value,
+              summary: bindings.length + ' row(s)',
+              result: results.innerHTML
+            });
+          }
+          status.textContent = 'Done in ' + (performance.now()-start).toFixed(1) + ' ms';
+        } catch (err) {
+          status.textContent = 'Error';
+          results.innerHTML = '<div class="text-red-600 text-sm">' + err + '</div>';
+          saveHistoryEntry({
+            ts: Date.now(),
+            query,
+            queryLine: query.split('\\n').find(l=>l.trim()) || 'Query',
+            rdf: data,
+            format: formatSelect.value,
+            summary: 'Error',
+            result: String(err)
+          });
+        }
+      }
+
+      function renderTable(bindings) {
+        if (!bindings || bindings.length === 0) {
+          results.innerHTML = '<div class=\"text-sm text-muted-foreground\">No results.</div>';
+          return;
+        }
+        const vars = Array.from(bindings[0].keys()).map(v => v.value || v);
+        let html = '<table class=\"min-w-full text-left text-sm\"><thead><tr>';
+        vars.forEach(v => html += '<th class="px-3 py-2 border-b border-border">' + v + '</th>');
+        html += '</tr></thead><tbody>';
+        bindings.forEach(b => {
+          html += '<tr>';
+          vars.forEach(v => {
+            const term = b.get(v) || b.get('?' + v) || b.get(v.replace(/^[?]/,''));
+            html += '<td class="px-3 py-2 border-b border-border">' + (term ? (term.value || term.toString()) : '') + '</td>';
+          });
+          html += '</tr>';
+        });
+        html += '</tbody></table>';
+        results.innerHTML = html;
+      }
+
+      function clearRdf() {
+        rdfInput.value = '';
+        rdfMeta.textContent = 'cleared';
+      }
+
+      function loadSample() {
+        sparqlInput.value = "PREFIX ex: <http://example.com/coom/>\nSELECT ?s ?p ?o WHERE { ?s ?p ?o } LIMIT 25";
+      }
+
+      function boot() {
+        populateSaved();
+        loadSavedBtn.addEventListener('click', loadSelected);
+        savedSelect.addEventListener('change', loadSelected);
+        clearRdfBtn.addEventListener('click', clearRdf);
+        runBtn.addEventListener('click', runQuery);
+        sampleBtn.addEventListener('click', loadSample);
+        renderHistory();
+        if (historyList) historyList.addEventListener('click', handleHistoryClick);
+        if (clearHistoryBtn) clearHistoryBtn.addEventListener('click', () => { persistHistory([]); renderHistory(); });
+      }
+      if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot); else boot();
+    })();
+  </script>
+</body>
+</html>

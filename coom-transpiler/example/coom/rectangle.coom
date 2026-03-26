@@ -1,0 +1,12 @@
+// Minimal rectangle example
+
+product {
+    num 0-1000   length
+    num 0-1000   width
+    num 0-1000000 area
+}
+
+behavior {
+    explanation "Area equals length times width."
+    imply area = length * width
+}

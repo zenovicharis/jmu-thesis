@@ -1,0 +1,766 @@
+<!DOCTYPE html>
+<html lang="en">
+	<head>
+		<meta charset="UTF-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+		<title>COOM Transpiler</title>
+		<script src="https://cdn.tailwindcss.com"></script>
+		<style>
+			.caret {
+				display: inline-block;
+				width: 0.6rem;
+				height: 0.6rem;
+				border-right: 2px solid currentColor;
+				border-bottom: 2px solid currentColor;
+				transform: rotate(45deg);
+				transition: transform 0.15s ease;
+			}
+			.caret.open {
+				transform: rotate(135deg);
+			}
+		</style>
+		<script>
+			tailwind.config = {
+				theme: {
+					extend: {
+						colors: {
+							border: "hsl(214.3 31.8% 91.4%)",
+							input: "hsl(214.3 31.8% 91.4%)",
+							ring: "hsl(222.2 84% 4.9%)",
+							background: "hsl(0 0% 100%)",
+							foreground: "hsl(222.2 84% 4.9%)",
+							primary: {
+								DEFAULT: "hsl(222.2 47.4% 11.2%)",
+								foreground: "hsl(210 40% 98%)",
+							},
+							secondary: {
+								DEFAULT: "hsl(210 40% 96%)",
+								foreground: "hsl(222.2 84% 4.9%)",
+							},
+							muted: {
+								DEFAULT: "hsl(210 40% 96%)",
+								foreground: "hsl(215.4 16.3% 46.9%)",
+							},
+						},
+					},
+				},
+			};
+		</script>
+	</head>
+	<body class="bg-background min-h-screen">
+		<div class="container max-w-6xl mx-auto py-10 px-4">
+			<!-- Header -->
+			<div class="relative mb-10">
+				<div class="text-center">
+					<h1 class="text-4xl font-bold tracking-tight text-foreground mb-2">
+						COOM Transpiler
+					</h1>
+					<p class="text-xl text-muted-foreground">
+						Convert your COOM configuration files to RDF schema
+					</p>
+					<p class="text-sm text-muted-foreground mt-2">
+						Upload a .coom file to view its content and generate RDF schema
+						output. Saved results stay in your browser only.
+					</p>
+				</div>
+
+				<div class="absolute top-0 right-0 flex items-center space-x-2">
+					<!-- Soft reset: resets form fields to defaults without leaving the page -->
+					<button type="button" id="softResetBtn" class="hidden inline-flex items-center justify-center rounded-md text-sm font-medium bg-muted text-foreground hover:bg-muted/80 h-10 px-4 py-2 border border-border">Reset</button>
+					<!-- Go to SPARQL playground (always visible) -->
+					<a href="/sparql" class="inline-flex items-center justify-center rounded-md text-sm font-medium bg-secondary text-secondary-foreground hover:bg-secondary/80 h-10 px-4 py-2 border border-border">
+						SPARQL Playground
+					</a>
+				</div>
+			</div>
+
+			<!-- Upload Card -->
+			<div class="bg-background border border-border rounded-lg shadow-sm p-6 mb-4">
+				<div class="space-y-4">
+					<div>
+						<h2 class="text-lg font-semibold text-foreground mb-2">
+							Upload Configuration File
+						</h2>
+						<p class="text-sm text-muted-foreground">
+							Select a .coom file to process choose between uploading your own or using one of the provided samples.
+						</p>
+					</div>
+
+					<!-- Upload/Sample form (no nested forms inside) -->
+					<form id="processForm" method="post" enctype="multipart/form-data" class="space-y-4">
+						<div id="sampleGroup">
+							<label class="text-sm font-medium text-foreground">Sample Configuration File:</label>
+							<div class="flex h-10 w-full">
+								<select id="sampleSelect" class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2">
+									<option value="">Choose example...</option>
+									<option value="comfort_bike">Comfort Bike</option>
+									<option value="bike_t">Bike T</option>
+									<option value="smart_home">Smart Home</option>
+								</select>
+							</div>
+						</div>
+						<div id="uploadBlock" class="space-y-2">
+							<label class="text-sm font-medium text-foreground">UploadConfiguration File</label>
+							<input id="fileInput" type="file" name="file" accept=".coom,.coom.py" class="flex h-10 w-full  rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2" />
+							<p class="text-xs text-muted-foreground">Or pick a sample below.</p>
+						</div>
+
+						<div id="sampleBanner" class="hidden flex items-center justify-between bg-secondary/40 border border-border rounded-md px-3 py-2 text-sm">
+							<div>
+								<span class="font-semibold text-foreground">Using sample:</span>
+								<span id="sampleChosen" class="text-foreground"></span>
+							</div>
+							<button type="button" id="discardSample" class="text-sm text-muted-foreground hover:text-foreground">Discard</button>
+						</div>
+
+						<div class="flex flex-wrap flex-col gap-3">
+							<div class="flex flex-wrap justify-between gap-3">
+							<!-- Choose format -->
+							
+								<div class="flex items-center space-x-2">
+									<label class="text-sm font-medium text-foreground">RDF Format:</label>
+									<select name="format" class="flex h-10 rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2">
+										<option value="turtle"  {#if selectedFormat == 'turtle'}selected{/if}>Turtle</option>
+										<option value="rdfxml"  {#if selectedFormat == 'rdfxml'}selected{/if}>RDF/XML</option>
+										<option value="ntriples"{#if selectedFormat == 'ntriples'}selected{/if}>N-Triples</option>
+										<option value="jsonld"  {#if selectedFormat == 'jsonld'}selected{/if}>JSON-LD</option>
+									</select>
+								</div>
+								
+							<div class="flex items-center space-x-3">
+								<span class="text-sm font-medium text-foreground">SHACL:</span>
+									<label class="inline-flex items-center space-x-1 text-sm text-foreground">
+										<input type="checkbox" name="shapes" value="syntactic-core" class="rounded border-input text-primary focus:ring-primary"
+											{#if shapesSelection}{#if shapesSelection.contains('syntactic-core')}checked{/if}{#else}checked{/if} />
+										<span>Syntactic Core</span>
+									</label>
+									<label class="inline-flex items-center space-x-1 text-sm text-foreground">
+										<input type="checkbox" name="shapes" value="semantic-consistency" class="rounded border-input text-primary focus:ring-primary"
+											{#if shapesSelection}{#if shapesSelection.contains('semantic-consistency')}checked{/if}{#else}checked{/if} />
+										<span>Semantic Consistency</span>
+									</label>
+									<label class="inline-flex items-center space-x-1 text-sm text-foreground">
+										<input type="checkbox" name="shapes" value="profile-refinements" class="rounded border-input text-primary focus:ring-primary"
+											{#if shapesSelection}{#if shapesSelection.contains('profile-refinements')}checked{/if}{#else}checked{/if} />
+										<span>Profile Refinements</span>
+									</label>
+								</div>
+							</div>
+							<input type="hidden" name="sampleContent" id="sampleContent" />
+							<input type="hidden" name="sampleName" id="sampleName" />
+
+							<button type="submit" class="inline-flex items-center justify-center rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 bg-primary text-primary-foreground hover:bg-primary/90 h-10 px-4 py-2">Process</button>
+						</div>
+						<div id="formError" class="text-sm text-red-600"></div>
+					</form>
+
+					<!-- download moved to header dropdown -->
+
+					{#if message}
+					<div class="rounded-md bg-red-50 border border-red-200 p-4">
+						<div class="text-sm text-red-700">{message}</div>
+					</div>
+					{/if}
+
+					{#if validationReport}
+					<div class="rounded-md bg-amber-50 border border-amber-200 p-4">
+						<button type="button" id="toggleValidation" class="w-full flex items-center justify-between text-sm font-medium text-amber-800">
+							<span>SHACL Validation ({conforms ? 'OK' : 'Failed'})</span>
+							<span id="validationToggleIcon" class="caret text-amber-800"></span>
+						</button>
+						<pre id="validationBody" class="hidden mt-2 text-xs bg-white border border-border rounded p-3 overflow-x-auto whitespace-pre-wrap text-foreground">{validationReport}</pre>
+					</div>
+					{/if}
+
+					{#if diagnostics}
+					<div class="rounded-md bg-amber-50 border border-amber-200 p-4">
+						<button type="button" id="toggleDiagnostics" class="w-full flex items-center justify-between text-sm font-medium text-amber-800">
+							<span>Compiler diagnostics</span>
+							<span id="diagnosticsToggleIcon" class="caret text-amber-800"></span>
+						</button>
+						<ul id="diagnosticsBody" class="hidden mt-2 text-sm space-y-1">
+							{#for d in diagnostics}
+							<li>
+								<span class="font-semibold text-amber-900">{d.severity}</span>
+								<span class="text-amber-700">[{d.stage}]</span>
+								<span class="text-amber-900">{d.message}</span>
+							</li>
+							{/for}
+						</ul>
+					</div>
+					{/if}
+				</div>
+			</div>
+
+			<!-- Saved models (browser only) -->
+			<div class="bg-background border border-border rounded-lg shadow-sm p-6 mb-4">
+				<div class="flex items-center justify-between mb-3">
+					<div>
+						<h2 class="text-lg font-semibold text-foreground">Saved Models (Local)</h2>
+						<p class="text-sm text-muted-foreground">Stored in your browser; no server persistence.</p>
+					</div>
+					<button type="button" id="clearSaved" class="text-sm text-muted-foreground hover:text-foreground">Clear all</button>
+				</div>
+				<div id="savedList" class="space-y-2 text-sm text-foreground"></div>
+				<div id="savedEmpty" class="text-sm text-muted-foreground">Nothing saved yet. Compile a model and click "Save to Browser".</div>
+			</div>
+
+			{#if fileContent}
+			<div class="my-4 flex items-center w-full">
+				<button type="button" id="saveLocalBtn" class="inline-flex items-center justify-center rounded-md text-sm font-medium bg-primary text-primary-foreground hover:bg-primary/90 h-10 px-4 py-2 w-full border border-border">
+					Save to Browser
+				</button>
+			</div>
+			{/if}
+
+			<!-- Results Grid -->
+			{#if fileContent}
+			<div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+				<!-- COOM Content -->
+				<div class="bg-background border border-border rounded-lg shadow-sm">
+					<div class="p-4 border-b border-border flex items-center justify-between">
+						<div>
+							<h3 class="text-lg font-semibold text-foreground">
+								COOM Configuration
+							</h3>
+							<p class="text-sm text-muted-foreground">Original file content</p>
+						</div>
+						<button type="button" id="downloadCoomBtn" class="text-sm px-3 py-2 rounded-md border border-border hover:bg-muted">Download</button>
+					</div>
+					<div class="p-4">
+						<pre id="coom-raw"
+							class="bg-muted rounded-md p-4 text-sm overflow-x-auto whitespace-pre-wrap font-mono text-foreground"
+						>{fileContent}</pre>
+					</div>
+				</div>
+
+				<!-- RDF Schema -->
+				<div class="bg-background border border-border rounded-lg shadow-sm">
+					<div class="p-4 border-b border-border flex items-center justify-between">
+						<div>
+							<h3 class="text-lg font-semibold text-foreground">
+								RDF Schema Output
+							</h3>
+							<p class="text-sm text-muted-foreground">Generated RDF schema</p>
+						</div>
+						<button type="button" id="downloadRdfBtnSection" class="text-sm px-3 py-2 rounded-md border border-border hover:bg-muted">Download</button>
+					</div>
+										<div class="p-4">
+												{#if transpileResult}
+												<div id="rdf-viewer" class="space-y-3">
+														<!-- Tree container (hidden until successfully rendered) -->
+														<div id="rdf-tree" class="hidden bg-muted rounded-md p-4 overflow-x-auto text-sm"></div>
+														<!-- Raw fallback -->
+														<pre id="rdf-raw"
+																class="bg-muted rounded-md p-4 text-sm overflow-x-auto whitespace-pre-wrap font-mono text-foreground"
+														>{transpileResult}</pre>
+														<div class="text-xs text-muted-foreground">Tip: JSON-LD or RDF/XML will render as a collapsible tree when possible.</div>
+												</div>
+												{#else}
+												<div class="text-center py-8 text-muted-foreground">
+														<p>Processing...</p>
+												</div>
+												{/if}
+										</div>
+				</div>
+			</div>
+			{/if}
+
+			{#if fileContent}
+				<!-- Reset/Discard button to avoid POST resubmission on refresh -->
+				<a href="/view-coom" class="w-full mt-4 inline-flex items-center justify-center rounded-md text-sm font-medium bg-muted text-foreground hover:bg-muted/80 h-10 px-4 py-2 border border-border">Delete Session</a>
+			{/if}
+		</div>
+						<!-- External libs for tree viewers -->
+						<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/json-formatter-js@2.5.1/dist/json-formatter.min.css">
+						<script src="https://cdn.jsdelivr.net/npm/json-formatter-js@2.5.1/dist/json-formatter.umd.min.js"></script>
+						<script src="https://cdnjs.cloudflare.com/ajax/libs/fast-xml-parser/5.2.5/fxparser.min.js"></script>
+
+						<script>
+						(function() {
+							function looksLikeJSON(text) {
+								const t = text.trim();
+								return (t.startsWith('{') || t.startsWith('['));
+							}
+							function looksLikeXML(text) {
+								const t = text.trim();
+								return t.startsWith('<');
+							}
+
+							function initViewer() {
+								const raw = document.getElementById('rdf-raw');
+								const tree = document.getElementById('rdf-tree');
+								if (!raw || !tree) return;
+								const text = raw.textContent || '';
+								if (!text.trim()) return;
+								let rendered = false;
+								try {
+									if (looksLikeJSON(text) && window.JSONFormatter) {
+										try {
+											const data = JSON.parse(text);
+											const formatter = new JSONFormatter(data, 1, { theme: null, hoverPreviewEnabled: true });
+											tree.innerHTML = '';
+											tree.appendChild(formatter.render());
+											rendered = true;
+										} catch (_) { rendered = false; }
+									}
+									if (!rendered && looksLikeXML(text) && window.fxp && window.fxp.XMLParser) {
+										try {
+											const parser = new window.fxp.XMLParser({ ignoreAttributes: false, attributeNamePrefix: '@_' });
+											const obj = parser.parse(text);
+											if (window.JSONFormatter) {
+												const formatter = new JSONFormatter(obj, 1, { theme: null, hoverPreviewEnabled: true });
+												tree.innerHTML = '';
+												tree.appendChild(formatter.render());
+												rendered = true;
+											}
+										} catch (_) { rendered = false; }
+									}
+								} catch (_) { rendered = false; }
+
+								if (rendered) {
+									tree.classList.remove('hidden');
+									raw.classList.add('hidden');
+								}
+							}
+
+							function downloadText(filename, content) {
+								if (!content) return;
+								const blob = new Blob([content], { type: 'text/plain' });
+								const url = URL.createObjectURL(blob);
+								const a = document.createElement('a');
+								a.href = url;
+								a.download = filename;
+								a.click();
+								setTimeout(() => URL.revokeObjectURL(url), 400);
+							}
+
+							function initSectionDownloads() {
+								const coomBtn = document.getElementById('downloadCoomBtn');
+								const rdfBtn = document.getElementById('downloadRdfBtnSection');
+								const coomRaw = document.getElementById('coom-raw');
+								const rdfRaw = document.getElementById('rdf-raw');
+								if (coomBtn) coomBtn.addEventListener('click', () => {
+									const txt = coomRaw ? coomRaw.textContent : '';
+									downloadText('model.coom', txt);
+								});
+								if (rdfBtn) rdfBtn.addEventListener('click', () => {
+									const txt = rdfRaw ? rdfRaw.textContent : '';
+									const ext = `{selectedFormat}` || 'ttl';
+									downloadText('output.' + ext, txt);
+								});
+							}
+
+							function initSamples() {
+								const select = document.getElementById('sampleSelect');
+								const sampleContent = document.getElementById('sampleContent');
+								const sampleName = document.getElementById('sampleName');
+								const form = document.getElementById('processForm');
+								const uploadBlock = document.getElementById('uploadBlock');
+								const banner = document.getElementById('sampleBanner');
+								const sampleChosen = document.getElementById('sampleChosen');
+								const discardBtn = document.getElementById('discardSample');
+								const sampleGroup = document.getElementById('sampleGroup');
+								const fileInput = document.getElementById('fileInput');
+								const softResetBtn = document.getElementById('softResetBtn');
+								if (!select || !sampleContent || !sampleName || !form) return;
+
+								const samples = {
+									comfort_bike: {
+										name: 'comfort_bike.coom',
+										content: `product {
+    ComfortBike comfortBike
+}
+
+structure ComfortBike {
+    FrontBag frontBag
+    RearBag  rearBag
+    Suspension suspension
+    num /kg riderWeight
+    num /kg totalWeight
+}
+
+enumeration FrontBag {
+    attribute num /kg maxWeight
+
+    small   = (  5 )
+    medium  = ( 10 )
+    large   = ( 15 )
+}
+
+enumeration RearBag {
+    attribute num /kg maxWeight
+
+    small   = ( 10 )
+    medium  = ( 15 )
+    large   = ( 25 )
+}
+
+enumeration Suspension {
+    attribute num /kg minWeight
+    attribute num /kg maxWeight
+
+    s1 = (   0  120 )
+    s2 = ( 120  135 )
+}
+
+behavior ComfortBike {
+    default riderWeight = 100
+    imply totalWeight = (riderWeight + frontBag.maxWeight + rearBag.maxWeight)
+}
+
+behavior ComfortBike {
+    require (totalWeight  > suspension.minWeight)
+    require (totalWeight <= suspension.maxWeight)
+}
+`
+									},
+									bike_t: {
+										name: 'bike_t.coom',
+										content: `product {
+    BikeT bike
+}
+
+structure BikeT {
+    ColorT color
+    WheelT wheel
+}
+
+structure WheelT {
+    num /Euro price
+    bool   highlighted
+    string name
+    TireT  tire
+}
+
+enumeration TireT {
+    Ti1
+    Ti2
+    Ti3
+}
+
+enumeration ColorT {
+    Red
+    Green
+    Yellow
+    Blue
+}
+
+behavior BikeT {
+    condition wheel.tire = Ti1 || wheel.tire = Ti2
+    require color = Yellow
+}
+
+behavior BikeT {
+    condition bike.wheel.tire = Ti3
+    imply bike.color = Blue
+}
+
+behavior BikeT {
+    default bike.color = Green
+}
+
+behavior BikeT {
+    require wheel.tire = Ti1 || wheel.tire = Ti2 || wheel.tire = Ti3
+}
+`
+									},
+									smart_home: {
+										name: 'smart_home.coom',
+										content: `product {
+    SmartHome home
+}
+
+structure SmartHome {
+    Thermostat thermostat
+    Light light
+    DoorLock door
+}
+
+enumeration Thermostat {
+    Eco
+    Comfort
+}
+
+enumeration Light {
+    Off
+    On
+}
+
+enumeration DoorLock {
+    Locked
+    Unlocked
+}
+
+behavior SmartHome {
+    default thermostat = Eco
+    default light = Off
+    default door = Locked
+}
+`
+									}
+								};
+
+								function applySample(key) {
+									if (!key || !samples[key]) return false;
+									const sample = samples[key];
+									sampleContent.value = sample.content;
+									sampleName.value = sample.name;
+									if (uploadBlock) uploadBlock.classList.add('hidden');
+									if (sampleGroup) sampleGroup.classList.add('hidden');
+									if (banner) banner.classList.remove('hidden');
+									if (sampleChosen) sampleChosen.textContent = sample.name;
+									if (softResetBtn) softResetBtn.classList.remove('hidden');
+									return true;
+								}
+
+								function clearSample() {
+									sampleContent.value = '';
+									sampleName.value = '';
+									select.value = '';
+									if (uploadBlock) uploadBlock.classList.remove('hidden');
+									if (sampleGroup) sampleGroup.classList.remove('hidden');
+									if (banner) banner.classList.add('hidden');
+									if (sampleChosen) sampleChosen.textContent = '';
+								}
+
+								select.addEventListener('change', () => {
+									const key = select.value;
+									if (!applySample(key)) {
+										clearSample();
+									}
+								});
+								if (discardBtn) discardBtn.addEventListener('click', (e) => { e.preventDefault(); clearSample(); });
+								if (fileInput) {
+									fileInput.addEventListener('change', () => {
+										if (fileInput.value) {
+											clearSample();
+											if (sampleGroup) sampleGroup.classList.add('hidden');
+										} else {
+											if (sampleGroup) sampleGroup.classList.remove('hidden');
+										}
+										if (softResetBtn) softResetBtn.classList.remove('hidden');
+									});
+								}
+								// Prepopulate banner if we navigated back with a sample already present
+								if (sampleContent.value && sampleName.value) {
+									if (banner) banner.classList.remove('hidden');
+									if (uploadBlock) uploadBlock.classList.add('hidden');
+									if (sampleGroup) sampleGroup.classList.add('hidden');
+									if (sampleChosen) sampleChosen.textContent = sampleName.value;
+								}
+							}
+
+							function boot() {
+								initViewer();
+								initSamples();
+								initSectionDownloads();
+								initSaved();
+							}
+							if (document.readyState === 'loading') {
+								document.addEventListener('DOMContentLoaded', boot);
+							} else { boot(); }
+						})();
+
+						// ---------- Local storage helpers ----------
+						(function() {
+							const STORAGE_KEY = 'coomSavedModels';
+							const saveBtn = document.getElementById('saveLocalBtn');
+							const savedList = document.getElementById('savedList');
+							const savedEmpty = document.getElementById('savedEmpty');
+							const clearBtn = document.getElementById('clearSaved');
+							const sampleContent = document.getElementById('sampleContent');
+							const sampleName = document.getElementById('sampleName');
+							const uploadForm = document.querySelector('form[enctype=\"multipart/form-data\"]');
+							const formatSelect = document.querySelector('select[name=\"format\"]');
+
+							function loadSaved() {
+								try {
+									return JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
+								} catch (_) {
+									return [];
+								}
+							}
+							function persist(list) {
+								localStorage.setItem(STORAGE_KEY, JSON.stringify(list));
+							}
+							function render() {
+								const items = loadSaved();
+								if (items.length === 0) {
+									savedEmpty?.classList.remove('hidden');
+									if (savedList) savedList.innerHTML = '';
+									return;
+								}
+								savedEmpty?.classList.add('hidden');
+								if (!savedList) return;
+								savedList.innerHTML = '';
+									items.sort((a,b) => b.ts - a.ts).forEach((item, idx) => {
+										const row = document.createElement('div');
+										row.className = 'flex items-center justify-between border border-border rounded-md px-3 py-2';
+										row.innerHTML =
+											'<div>' +
+												'<div class="font-semibold">' + (item.name || 'model.coom') +
+													' <span class="text-xs text-muted-foreground">(' + (item.format || 'turtle') + ')</span></div>' +
+												'<div class="text-xs text-muted-foreground">' + new Date(item.ts).toLocaleString() + '</div>' +
+											'</div>' +
+											'<div class="flex items-center space-x-2">' +
+												'<button class="text-sm px-3 py-1 rounded-md border border-border hover:bg-muted" data-action="load" data-idx="' + idx + '">Load</button>' +
+												'<button class="text-sm px-3 py-1 rounded-md border border-border hover:bg-muted" data-action="download" data-idx="' + idx + '">Download</button>' +
+												'<button class="text-sm px-3 py-1 rounded-md border border-border text-red-600 hover:bg-red-50" data-action="delete" data-idx="' + idx + '">Delete</button>' +
+											'</div>';
+										savedList.appendChild(row);
+									});
+							}
+
+							function saveCurrent() {
+								const coomEl = document.getElementById('coom-raw');
+								const coomSrc = coomEl ? coomEl.textContent : '';
+								const rdfEl = document.getElementById('rdf-raw');
+								const rdf = rdfEl ? rdfEl.textContent : '';
+								const name = `{fileName}` || 'model.coom';
+								const fmt = `{selectedFormat}` || (formatSelect ? formatSelect.value : 'turtle');
+								if (!rdf || !coomSrc) {
+									alert('Nothing to save. Please compile a model first.');
+									return;
+								}
+								const list = loadSaved();
+								list.push({ name, coom: coomSrc, rdf, format: fmt, ts: Date.now() });
+								persist(list);
+								render();
+							}
+
+							function handleSavedClick(e) {
+								const btn = e.target.closest('button[data-action]');
+								if (!btn) return;
+								const idx = parseInt(btn.getAttribute('data-idx'), 10);
+								const action = btn.getAttribute('data-action');
+								const items = loadSaved();
+								const item = items.sort((a,b)=>b.ts-a.ts)[idx];
+								if (!item) return;
+								if (action === 'delete') {
+									const filtered = items.filter((x) => x !== item);
+									persist(filtered);
+									render();
+								} else if (action === 'download') {
+									const blob = new Blob([item.rdf || ''], { type: 'text/plain' });
+									const url = URL.createObjectURL(blob);
+									const a = document.createElement('a');
+									a.href = url;
+									const ext = item.format === 'rdfxml' ? 'rdf' : item.format || 'ttl';
+									a.download = (item.name || 'model') + '.' + ext;
+									a.click();
+									setTimeout(() => URL.revokeObjectURL(url), 500);
+								} else if (action === 'load') {
+									if (!uploadForm || !sampleContent || !sampleName) return;
+									sampleContent.value = item.coom || '';
+									sampleName.value = item.name || 'model.coom';
+									if (formatSelect && item.format) {
+										formatSelect.value = item.format;
+									}
+									uploadForm.submit();
+								}
+							}
+
+							function initSaved() {
+								if (saveBtn) saveBtn.addEventListener('click', saveCurrent);
+								if (savedList) savedList.addEventListener('click', handleSavedClick);
+								if (clearBtn) clearBtn.addEventListener('click', () => { persist([]); render(); });
+								render();
+							}
+
+							window.initSaved = initSaved;
+						})();
+
+						// ---------- Form validation ----------
+						(function() {
+							const form = document.getElementById('processForm');
+							if (!form) return;
+							const errorEl = document.getElementById('formError');
+							const fileInput = document.getElementById('fileInput');
+							const sampleContent = document.getElementById('sampleContent');
+							const sampleName = document.getElementById('sampleName');
+							const sampleSelect = document.getElementById('sampleSelect');
+							const shapesBoxes = Array.from(document.querySelectorAll('input[name=\"shapes\"]'));
+							const sampleGroup = document.getElementById('sampleGroup');
+							const uploadBlock = document.getElementById('uploadBlock');
+							const banner = document.getElementById('sampleBanner');
+							const sampleChosen = document.getElementById('sampleChosen');
+							const softResetBtn = document.getElementById('softResetBtn');
+							const formatSelect = document.querySelector('select[name=\"format\"]');
+
+							form.addEventListener('submit', (e) => {
+								const errs = [];
+								const usingSample = sampleContent && sampleContent.value.trim().length > 0;
+								const hasFile = fileInput && fileInput.value;
+								if (!usingSample && !hasFile) {
+									errs.push('Select a file or choose a sample.');
+								}
+								const selectedShapes = shapesBoxes.filter(b => b.checked).map(b => b.value).filter(v => v && v.trim().length > 0);
+								if (selectedShapes.length === 0) {
+									errs.push('Select at least one SHACL preset.');
+								}
+								if (errs.length) {
+									e.preventDefault();
+									if (errorEl) errorEl.textContent = errs.join(' ');
+								} else if (errorEl) {
+									errorEl.textContent = '';
+								}
+							});
+
+							function resetFormFields() {
+								if (fileInput) fileInput.value = '';
+								if (sampleContent) sampleContent.value = '';
+								if (sampleName) sampleName.value = '';
+								if (sampleSelect) sampleSelect.value = '';
+								if (sampleGroup) sampleGroup.classList.remove('hidden');
+								if (uploadBlock) uploadBlock.classList.remove('hidden');
+								if (banner) banner.classList.add('hidden');
+								if (sampleChosen) sampleChosen.textContent = '';
+								shapesBoxes.forEach(box => box.checked = true);
+								if (formatSelect) formatSelect.value = '{selectedFormat}' || 'turtle';
+								if (errorEl) errorEl.textContent = '';
+							}
+
+							function markDirty() {
+								if (softResetBtn) softResetBtn.classList.remove('hidden');
+							}
+
+							form.addEventListener('input', markDirty);
+							form.addEventListener('change', markDirty);
+							if (softResetBtn) {
+								softResetBtn.addEventListener('click', (e) => {
+									e.preventDefault();
+									resetFormFields();
+									if (softResetBtn) softResetBtn.classList.add('hidden');
+								});
+							}
+						})();
+
+						// ---------- Collapsibles ----------
+						(function initCollapsibles() {
+							const vBtn = document.getElementById('toggleValidation');
+							const vBody = document.getElementById('validationBody');
+							const vIcon = document.getElementById('validationToggleIcon');
+							if (vBtn && vBody && vIcon) {
+								vBody.classList.add('hidden');
+								vIcon.classList.remove('open');
+								vBtn.addEventListener('click', () => {
+									vBody.classList.toggle('hidden');
+									vIcon.classList.toggle('open', !vBody.classList.contains('hidden'));
+								});
+							}
+							const dBtn = document.getElementById('toggleDiagnostics');
+							const dBody = document.getElementById('diagnosticsBody');
+							const dIcon = document.getElementById('diagnosticsToggleIcon');
+							if (dBtn && dBody && dIcon) {
+								dBody.classList.add('hidden');
+								dIcon.classList.remove('open');
+								dBtn.addEventListener('click', () => {
+									dBody.classList.toggle('hidden');
+									dIcon.classList.toggle('open', !dBody.classList.contains('hidden'));
+								});
+							}
+						})();
+						</script>
+	</body>
+</html>

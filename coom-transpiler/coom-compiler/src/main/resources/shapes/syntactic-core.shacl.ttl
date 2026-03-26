@@ -1,0 +1,61 @@
+@prefix sh:   <http://www.w3.org/ns/shacl#> .
+@prefix rdf:  <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix ex:   <http://example.org/coom#> .
+@prefix xsd:  <http://www.w3.org/2001/XMLSchema#> .
+
+#################################################
+# Global requirement: exactly one configuration
+#################################################
+
+ex:ConfigurationRootShape
+  a sh:NodeShape ;
+  sh:targetClass ex:ConfigurationRoot ;
+
+  sh:property [
+    sh:path ex:hasProduct ;
+    sh:minCount 1 ;
+    sh:maxCount 1 ;
+    sh:message "A configuration must reference exactly one product." ;
+  ] .
+
+#################################################
+# Product must exist and be connected
+#################################################
+
+ex:ProductShape
+  a sh:NodeShape ;
+  sh:targetClass ex:Product ;
+
+  sh:property [
+    sh:path ex:hasComponent ;
+    sh:minCount 1 ;
+    sh:message "A product must have at least one component." ;
+  ] .
+
+#################################################
+# Every component must be explicitly typed
+#################################################
+
+ex:ComponentTypingShape
+  a sh:NodeShape ;
+  sh:targetClass ex:Component ;
+
+  sh:property [
+    sh:path rdf:type ;
+    sh:minCount 1 ;
+    sh:message "Every component must have an explicit rdf:type." ;
+  ] .
+
+#################################################
+# Structural sanity: no dangling components
+#################################################
+
+ex:ComponentConnectionShape
+  a sh:NodeShape ;
+  sh:targetClass ex:Component ;
+
+  sh:property [
+    sh:path ex:isComponentOf ;
+    sh:minCount 1 ;
+    sh:message "Every component must belong to a product." ;
+  ] .
