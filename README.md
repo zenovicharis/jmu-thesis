@@ -1,5 +1,5 @@
 <p align="right">
-  <img src="presentation/assets/jmu-logo.png" alt="JMU University logo" width="140" />
+  <img src="assets/jmu-logo.png" alt="JMU University logo" width="140" />
 </p>
 
 # Thesis Defense Project
