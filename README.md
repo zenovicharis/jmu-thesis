@@ -28,9 +28,6 @@ The goal is to keep everything needed for the defense in one place: code, docume
 - [Docker (optional)](#docker-optional)
 - [Quality metrics and synthetic benchmarks](#quality-metrics-and-synthetic-benchmarks)
 - [Troubleshooting](#troubleshooting)
-- [Thesis (written component)](#thesis-written-component)
-- [Key Points of the Thesis](#key-points-of-the-thesis)
-- [Thesis Timeline](#thesis-timeline)
 
 ## Overview
 
@@ -152,7 +149,7 @@ mvn -q -pl coom-compiler -am package
 From the repository root, generate synthetic benchmark COOM models (G1/G2/G3):
 
 ```bash
-cd /Users/hariszenovic/Projects/JMU/Thesis
+cd <repository-path>
 java -cp coom-transpiler/coom-compiler/target/coom-compiler-cli.jar \
   org.example.coom.compiler.metrics.SyntheticCoomGeneratorCli \
   --out /tmp/coom-bench \
@@ -165,7 +162,7 @@ Compile generated synthetic models to RDF with SHACL validation
 for all preset shape sets:
 
 ```bash
-cd /Users/hariszenovic/Projects/JMU/Thesis
+cd <repository-path>
 for preset in syntactic-core semantic-consistency profile-refinements; do
   for f in /tmp/coom-bench/*.coom; do
     base="$(basename "$f" .coom)"
@@ -183,7 +180,7 @@ Compile measured case-study models to RDF with SHACL validation
 for all preset shape sets:
 
 ```bash
-cd /Users/hariszenovic/Projects/JMU/Thesis
+cd <repository-path>
 for preset in syntactic-core semantic-consistency profile-refinements; do
   for f in \
     coom-transpiler/example/coom/rectangle.coom \
@@ -203,7 +200,7 @@ done
 Run the benchmark metrics collector for synthetic datasets (table-ready CSV):
 
 ```bash
-cd /Users/hariszenovic/Projects/JMU/Thesis
+cd <repository-path>
 java -cp coom-transpiler/coom-compiler/target/coom-compiler-cli.jar \
   org.example.coom.compiler.metrics.QualityMetricsCli \
   /tmp/coom-bench/g1-balanced-d3-b2.coom \
@@ -214,7 +211,7 @@ java -cp coom-transpiler/coom-compiler/target/coom-compiler-cli.jar \
 Run the same collector for measured case-study models:
 
 ```bash
-cd /Users/hariszenovic/Projects/JMU/Thesis
+cd <repository-path>
 java -cp coom-transpiler/coom-compiler/target/coom-compiler-cli.jar \
   org.example.coom.compiler.metrics.QualityMetricsCli \
   coom-transpiler/example/coom/rectangle.coom \
@@ -248,74 +245,3 @@ ViolationDensity = Violations / (Triples / 1000)
 - Upload errors in the web UI:
   - Ensure the HTML form uses `enctype="multipart/form-data"` and the input name is `file`.
   - Only `.coom` and `.coom.py` extensions are accepted by the controller.
-
----
-
-## Thesis (written component)
-
-The written thesis lives in `thesis/` and is authored in LaTeX. Chapters are organized per folder
-under `thesis/` (e.g., `thesis/chapter1/`, `thesis/chapter4/`). Assets referenced by the thesis
-are in `assets/` (and/or chapter subfolders).
-
-## Key Points of the Thesis
-
-* **Background & Motivation**
-
-  * COOM (Configuration Object Model) captures rich, object-centred domain knowledge.
-  * Lacks standardised syntax and query ecosystem compared to RDF/OWL.
-  * Bridging COOM with knowledge graphs allows reuse of mature graph tools.
-
-* **Problem Statement**
-
-  * Interoperability gap with Linked Data standards.
-  * No standard query ecosystem.
-  * Hard to integrate COOM with external knowledge graphs.
-
-* **Research Objectives**
-
-  1. Literature review of RDF/OWL/SHACL approaches.
-  2. Formal classification of COOM constructs.
-  3. Mapping COOM to RDF/OWL without semantic loss.
-  4. Translate Prolog meta-queries to SPARQL.
-  5. Define canonical query catalogue.
-  6. Evaluate mapping fidelity & performance.
-  7. Explore advanced analytics with RDF 1.2 / SPARQL 1.2.
-
-* **Risks & Mitigation**
-
-  * Semantic loss → Iterative validation & round-trips.
-  * Performance overhead → Benchmarks & indexing.
-  * Tooling/version drift → RDF 1.1 baseline, extensions for RDF 1.2.
-
-* **Expected Contributions**
-
-  * Formal analysis of COOM vs. RDF/OWL expressiveness.
-  * Open-source COOM-to-RDF/OWL converter.
-  * Query library (Prolog + SPARQL).
-  * Benchmark dataset & metrics.
-
----
-
-
-### Thesis Timeline
-
-- **August 2025**  
-  Finalise thesis proposal and conduct initial literature survey.
-
-- **September 2025**  
-  Perform COOM conceptual analysis and draft RDF mapping framework.
-
-- **October 2025**  
-  Design RDF/OWL schema and begin prototyping tooling (Java converter).
-
-- **November 2025**  
-  Define queries in Prolog and SPARQL; implement SHACL validations.
-
-- **December 2025**  
-  Evaluate mappings, define benchmarks, and run performance tests.
-
-- **January 2026**  
-  Write final thesis draft and conduct review phase.
-
-- **February 2026**  
-  Submit thesis and present results.
